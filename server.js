@@ -4,8 +4,20 @@ const path = require('path');
 const http = require('http');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const VAULT = '/home/guszti/Obsidian_Vault';
+
+// Vercel: vault.json-ból olvas; lokálisan: fájlrendszerből
+const IS_VERCEL = !!process.env.VERCEL;
+let vaultData = null;
+if (IS_VERCEL) {
+  try {
+    vaultData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'vault.json'), 'utf8'));
+    console.log(`Vault betöltve: ${Object.keys(vaultData.files).length} fájl (${vaultData.exportedAt})`);
+  } catch (e) {
+    console.error('HIBA: data/vault.json nem található –', e.message);
+  }
+}
 
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -13,11 +25,22 @@ app.use(express.static(__dirname));
 // ── Segédfüggvények ────────────────────────────────────────────────────────────
 
 function readFile(filePath) {
+  if (IS_VERCEL && vaultData) {
+    const key = path.relative(VAULT, filePath).replace(/\\/g, '/');
+    return vaultData.files[key] || '';
+  }
   try { return fs.readFileSync(filePath, 'utf8'); }
   catch { return ''; }
 }
 
 function listMdFiles(dir) {
+  if (IS_VERCEL && vaultData) {
+    const rel = path.relative(VAULT, dir).replace(/\\/g, '/');
+    return Object.keys(vaultData.files)
+      .filter(k => k.startsWith(rel + '/') && !k.slice(rel.length + 1).includes('/') && k.endsWith('.md'))
+      .map(k => path.basename(k))
+      .filter(f => !/^(sablon|SABLON)/i.test(f));
+  }
   try {
     return fs.readdirSync(dir)
       .filter(f => f.endsWith('.md') && !/^(sablon|SABLON)/i.test(f));
@@ -35,24 +58,28 @@ function parseFrontmatter(content) {
   return out;
 }
 
-// Q:/A: flashcardok kinyerése
+// Q:/A: és "word :: meaning — example" flashcardok kinyerése
 function parseFlashcards(content, source) {
   const cards = [];
   const lines = content.split('\n');
   let q = null;
   for (const line of lines) {
-    if (line.startsWith('Q: ')) { q = line.slice(3).trim(); }
-    else if (line.startsWith('A: ') && q) {
+    // Q:/A: formátum
+    if (line.startsWith('Q: ')) { q = line.slice(3).trim(); continue; }
+    if (line.startsWith('A: ') && q) {
       const aFull = line.slice(3).trim();
       const parts = aFull.split(' — ');
-      cards.push({
-        q,
-        a: aFull,
-        meaning: parts[0].trim(),
-        example: parts[1] ? parts[1].trim() : '',
-        source
-      });
+      cards.push({ q, a: aFull, meaning: parts[0].trim(), example: parts[1] ? parts[1].trim() : '', source });
       q = null;
+      continue;
+    }
+    // Obsidian SR formátum: "word :: meaning — example"
+    if (line.includes(' :: ') && !line.startsWith('|') && !line.startsWith('#') && !line.startsWith('-')) {
+      const [wordPart, rest] = line.split(' :: ');
+      if (wordPart && rest) {
+        const parts = rest.split(' — ');
+        cards.push({ q: wordPart.trim(), a: rest.trim(), meaning: parts[0].trim(), example: parts[1] ? parts[1].trim() : '', source });
+      }
     }
   }
   return cards;

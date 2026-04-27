@@ -4,7 +4,8 @@
   "description": "Angol tanulás webapp – Obsidian Vault alapján, Ollama llama3:8b AI tutorral",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "export": "node scripts/export-vault.js"
   },
   "dependencies": {
     "express": "^4.18.2"
