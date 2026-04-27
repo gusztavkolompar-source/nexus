@@ -699,7 +699,7 @@ async function loadQuiz() {
   const el = document.getElementById('quizContent');
   el.innerHTML='<div class="card"><p style="text-align:center;color:var(--text-muted);padding:18px;">Generálás...</p></div>';
   try {
-    const d = await fetch('/api/quiz').then(r=>r.json());
+    const d = await fetch('/api/quiz?t='+Date.now()).then(r=>r.json());
     quizData=d.questions||[]; quizIndex=0; quizScore=0;
     if (!quizData.length) { el.innerHTML='<div class="empty"><div class="icon">📭</div><p>Nincs elég szókártya a kvízhez.</p></div>'; return; }
     showQuizQuestion();

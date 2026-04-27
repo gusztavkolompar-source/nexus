@@ -184,6 +184,7 @@ app.get('/api/quiz', (req, res) => {
   });
   if (all.length < 4) return res.json({ questions: [] });
 
+  res.setHeader('Cache-Control', 'no-store');
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, Math.min(6, all.length));
 
