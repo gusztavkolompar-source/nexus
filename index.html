@@ -723,7 +723,7 @@ function showQuizQuestion() {
       ${q.example?`<div class="quiz-example">"${escHtml(q.example)}" ${ttsHtml(q.example)}</div>`:'<div style="height:14px;"></div>'}
       <div class="quiz-source">Téma: ${escHtml(q.source||'–')}</div>
       <div class="quiz-options" id="quizOptions">
-        ${q.options.map(opt=>`<button class="quiz-opt" onclick="checkAnswer(${JSON.stringify(opt)},${JSON.stringify(q.correct)},this)">${escHtml(opt)}</button>`).join('')}
+        ${q.options.map(opt=>`<button class="quiz-opt" data-opt="${escHtml(opt)}" data-correct="${escHtml(q.correct)}" onclick="checkAnswer(this.dataset.opt,this.dataset.correct,this)">${escHtml(opt)}</button>`).join('')}
       </div>
       <div id="quizFeedback" style="font-size:.88rem;min-height:22px;"></div>
     </div>`;
