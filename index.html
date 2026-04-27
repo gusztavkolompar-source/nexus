@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angol Tanulás – Vault App</title>
+<style>
+:root {
+  --primary: #4F46E5; --primary-light: #EEF2FF;
+  --success: #16A34A; --success-light: #DCFCE7;
+  --danger: #DC2626;  --danger-light: #FEE2E2;
+  --warning: #D97706; --warning-light: #FEF3C7;
+  --gray: #64748B;    --gray-light: #F1F5F9;
+  --border: #E2E8F0;  --text: #1E293B; --text-muted: #64748B;
+  --card: #FFFFFF;    --bg: #F8FAFC;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui,-apple-system,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── Header ── */
+header {
+  background: linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);
+  color: white; padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-lg); position: sticky; top: 0; z-index: 100;
+}
+header h1 { font-size: 1.15rem; font-weight: 700; }
+header h1 span { margin-right: 6px; }
+.header-right { display: flex; align-items: center; gap: 10px; font-size: .82rem; opacity: .95; }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+.badge.ok  { background: #BBF7D0; color: #14532D; }
+.badge.err { background: #FCA5A5; color: #7F1D1D; }
+.btn-icon { background: rgba(255,255,255,.2); border: none; color: white; width: 34px; height: 34px;
+  border-radius: 8px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.btn-icon:hover { background: rgba(255,255,255,.35); }
+
+/* ── Tabs ── */
+nav.tabs { background: var(--card); border-bottom: 2px solid var(--border);
+  display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 12px; }
+nav.tabs::-webkit-scrollbar { display: none; }
+nav.tabs button { padding: 13px 15px; border: none; background: none; font-size: .87rem;
+  font-weight: 500; color: var(--text-muted); cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
+nav.tabs button:hover { color: var(--primary); }
+nav.tabs button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+
+/* ── Main ── */
+main { max-width: 860px; margin: 0 auto; padding: 20px 14px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Cards & buttons ── */
+.card { background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 18px;
+  border-radius: 8px; border: none; font-size: .88rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #4338CA; }
+.btn-ghost  { background: var(--gray-light); color: var(--text); }
+.btn-ghost:hover  { background: var(--border); }
+.btn-warning { background: var(--warning); color: white; }
+.btn-sm { padding: 5px 12px; font-size: .8rem; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── TTS button ── */
+.tts-btn { background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 6px; cursor: pointer; font-size: .85rem; color: var(--text-muted);
+  transition: all .12s; line-height: 1; vertical-align: middle; margin-left: 4px; }
+.tts-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* ── Progress bar ── */
+.progress-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width .3s; }
+
+/* ── Flashcard ── */
+.flashcard-wrap { perspective: 1000px; width: 100%; max-width: 520px; margin: 0 auto 20px; }
+.flashcard { width: 100%; height: 200px; position: relative; transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.4,0,.2,1); cursor: pointer; }
+.flashcard.flipped { transform: rotateY(180deg); }
+.flashcard-front, .flashcard-back { position: absolute; inset: 0; border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 22px; backface-visibility: hidden; box-shadow: var(--shadow-lg); }
+.flashcard-front { background: linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%); color: white; }
+.flashcard-back  { background: white; border: 2px solid var(--primary-light); transform: rotateY(180deg); }
+.fc-label { font-size: .72rem; font-weight: 700; opacity: .7; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.fc-word  { font-size: 1.75rem; font-weight: 700; text-align: center; }
+.fc-meaning { font-size: 1.25rem; font-weight: 600; color: var(--primary); text-align: center; }
+.fc-example { font-size: .88rem; color: var(--text-muted); margin-top: 6px; text-align: center; font-style: italic; }
+.fc-hint    { font-size: .75rem; opacity: .55; margin-top: 10px; }
+.fc-source  { font-size: .72rem; background: rgba(255,255,255,.2); padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; }
+.fc-controls { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.fc-counter { font-size: .88rem; color: var(--text-muted); min-width: 55px; text-align: center; }
+
+/* ── Section head ── */
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-head h2 { font-size: 1.05rem; font-weight: 700; }
+
+/* ── Grammar ── */
+.grammar-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; }
+.grammar-header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; transition: background .12s; }
+.grammar-header:hover { background: var(--gray-light); }
+.grammar-title { font-size: .97rem; font-weight: 700; }
+.grammar-meta  { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.grammar-body  { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
+.grammar-body.open { display: block; }
+.grammar-section { margin-top: 14px; }
+.grammar-section h4 { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--primary); margin-bottom: 6px; }
+.grammar-section p, .grammar-section li { font-size: .88rem; line-height: 1.6; }
+.grammar-section ul { padding-left: 16px; }
+.md-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 6px; }
+.md-table th { background: var(--primary-light); color: var(--primary); font-weight: 700; padding: 7px 10px; text-align: left; }
+.md-table td { padding: 7px 10px; border-top: 1px solid var(--border); }
+.md-table tr:hover td { background: var(--gray-light); }
+
+/* ── Quiz ── */
+.quiz-question { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+.quiz-example  { font-size: .86rem; color: var(--text-muted); font-style: italic; margin-bottom: 16px; }
+.quiz-source   { font-size: .73rem; color: var(--text-muted); margin-bottom: 14px; }
+.quiz-options  { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 16px; }
+.quiz-opt { padding: 13px 14px; border-radius: 10px; border: 2px solid var(--border);
+  background: white; font-size: .88rem; cursor: pointer; text-align: left;
+  transition: all .12s; font-weight: 500; }
+.quiz-opt:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-light); }
+.quiz-opt.correct { border-color: var(--success); background: var(--success-light); color: var(--success); }
+.quiz-opt.wrong   { border-color: var(--danger);  background: var(--danger-light);  color: var(--danger); }
+.quiz-opt:disabled { cursor: not-allowed; }
+.quiz-score { font-size: 1.35rem; font-weight: 700; text-align: center; padding: 16px; }
+.quiz-score .big { font-size: 2.8rem; display: block; }
+
+/* ── Mistakes ── */
+.mistake-card { display: flex; align-items: flex-start; gap: 12px; background: var(--card);
+  border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 9px;
+  border-left: 4px solid var(--danger); }
+.mistake-wrong   { color: var(--danger);   font-weight: 600; text-decoration: line-through; font-size: .93rem; }
+.mistake-correct { color: var(--success);  font-weight: 700; font-size: .93rem; }
+.mistake-reason  { font-size: .8rem; color: var(--text-muted); margin-top: 3px; }
+.mistake-date    { font-size: .72rem; color: var(--border); }
+
+/* ── Chat ── */
+.chat-box { height: 340px; overflow-y: auto; border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; background: var(--gray-light); margin-bottom: 10px; scroll-behavior: smooth; }
+.msg { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start; }
+.msg.user { flex-direction: row-reverse; }
+.msg-bubble { max-width: 76%; padding: 9px 13px; border-radius: 14px; font-size: .88rem;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.msg.bot  .msg-bubble { background: white; border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.msg.user .msg-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+.msg-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: .95rem; flex-shrink: 0; }
+.msg.bot  .msg-avatar { background: var(--primary-light); }
+.msg.user .msg-avatar { background: #E0E7FF; }
+.typing { display: flex; gap: 4px; align-items: center; padding: 9px 12px; }
+.typing span { width: 7px; height: 7px; background: var(--gray); border-radius: 50%; animation: bounce .8s infinite; }
+.typing span:nth-child(2) { animation-delay: .15s; }
+.typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+.chat-input-row { display: flex; gap: 7px; }
+.chat-input { flex: 1; padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: .88rem; resize: none; min-height: 42px; max-height: 110px; font-family: inherit; }
+.chat-input:focus { outline: none; border-color: var(--primary); }
+.quick-btns { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.quick-btn { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: white;
+  font-size: .78rem; cursor: pointer; transition: all .12s; }
+.quick-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* ── Progress / Charts ── */
+.chart-wrap { background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.chart-title { font-size: .9rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+canvas.chart { width: 100%; height: 160px; display: block; border-radius: 8px; }
+.progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 12px; margin-bottom: 16px; }
+.pstat { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); text-align: center; }
+.pstat-num   { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+.pstat-label { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Stats (home) ── */
+.stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.stat-box { flex: 1; min-width: 110px; background: var(--card); border-radius: var(--radius);
+  padding: 14px; box-shadow: var(--shadow); text-align: center; }
+.stat-num   { font-size: 1.7rem; font-weight: 800; color: var(--primary); }
+.stat-label { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.plan-item  { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.plan-item:last-child { border-bottom: none; }
+.plan-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 1px; }
+.plan-text  { font-size: .88rem; }
+
+/* ── Settings Modal ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 500; }
+.modal-overlay.hidden { display: none; }
+.modal-box { background: white; border-radius: var(--radius); padding: 24px;
+  width: min(420px, 95vw); box-shadow: var(--shadow-lg); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-header h3 { font-size: 1.05rem; font-weight: 700; }
+.modal-close { background: var(--gray-light); border: none; border-radius: 6px;
+  width: 30px; height: 30px; cursor: pointer; font-size: 1rem; }
+.modal-row { margin-bottom: 16px; }
+.modal-row label { display: block; font-size: .82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.modal-select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .9rem; }
+.modal-select:focus { outline: none; border-color: var(--primary); }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.model-info { font-size: .78rem; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Toast & FAB ── */
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--text); color: white;
+  padding: 11px 18px; border-radius: 10px; font-size: .87rem; z-index: 999;
+  opacity: 0; transform: translateY(8px); transition: all .22s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.fab { position: fixed; bottom: 22px; left: 22px; width: 52px; height: 52px;
+  border-radius: 50%; background: var(--warning); color: white; border: none;
+  font-size: 1.3rem; cursor: pointer; box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center; transition: transform .18s; z-index: 200; }
+.fab:hover { transform: scale(1.1); }
+.fab-label { position: fixed; bottom: 27px; left: 82px; background: var(--text); color: white;
+  padding: 5px 10px; border-radius: 7px; font-size: .77rem; white-space: nowrap;
+  opacity: 0; transition: opacity .18s; pointer-events: none; z-index: 200; }
+.fab:hover + .fab-label { opacity: 1; }
+
+/* ── Empty state ── */
+.empty { text-align: center; padding: 44px 14px; color: var(--text-muted); }
+.empty .icon { font-size: 2.8rem; margin-bottom: 10px; }
+
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .quiz-options { grid-template-columns: 1fr; }
+  .fc-word { font-size: 1.35rem; }
+  .progress-stats { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <h1><span>🎓</span>Angol Tanulás</h1>
+  <div class="header-right">
+    <span id="headerDate" style="font-size:.78rem;opacity:.85;"></span>
+    <span id="ollamaStatus" class="badge err">Ollama...</span>
+    <button class="btn-icon" onclick="openSettings()" title="Beállítások">⚙️</button>
+  </div>
+</header>
+
+<!-- ══ TABS ══ -->
+<nav class="tabs">
+  <button class="active" onclick="switchTab('home')">🏠 Főoldal</button>
+  <button onclick="switchTab('vocab')">📚 Szókincs</button>
+  <button onclick="switchTab('grammar')">📖 Nyelvtan</button>
+  <button onclick="switchTab('quiz')">🎯 Kvíz</button>
+  <button onclick="switchTab('mistakes')">⚠️ Hibák</button>
+  <button onclick="switchTab('progress')">📊 Haladás</button>
+  <button onclick="switchTab('tutor')">🤖 AI Tutor</button>
+</nav>
+
+<main>
+
+<!-- ══ FŐOLDAL ══ -->
+<div id="panel-home" class="panel active">
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num" id="statCards">–</div><div class="stat-label">📚 Szókártya</div></div>
+    <div class="stat-box"><div class="stat-num" id="statLessons">–</div><div class="stat-label">📖 Lecke</div></div>
+    <div class="stat-box"><div class="stat-num" id="statMistakes">–</div><div class="stat-label">⚠️ Hiba</div></div>
+    <div class="stat-box"><div class="stat-num" id="statDays">–</div><div class="stat-label">📅 Nap</div></div>
+  </div>
+  <div class="card">
+    <div class="section-head">
+      <div><h2>📋 Legutóbbi terv</h2><p id="planDate" style="font-size:.78rem;color:var(--text-muted);margin-top:2px;"></p></div>
+    </div>
+    <div id="planContent"><p style="color:var(--text-muted);font-size:.88rem;">Betöltés...</p></div>
+  </div>
+  <div class="card">
+    <h2 style="margin-bottom:10px;font-size:.95rem;">🚀 Gyors indítás</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="switchTab('vocab')">📚 Szókincs</button>
+      <button class="btn btn-ghost btn-sm"   onclick="switchTab('quiz')">🎯 Kvíz</button>
+      <button class="btn btn-ghost btn-sm"   onclick="switchTab('progress')">📊 Haladás</button>
+      <button class="btn btn-ghost btn-sm"   onclick="switchTab('tutor')">🤖 AI Tutor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SZÓKINCS ══ -->
+<div id="panel-vocab" class="panel">
+  <div class="section-head">
+    <h2>📚 Szókártyák</h2>
+    <span id="fcCounter" class="fc-counter">–/–</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="fcProgress" style="width:0%"></div></div>
+  <div class="flashcard-wrap">
+    <div class="flashcard" id="flashcard" onclick="flipCard()">
+      <div class="flashcard-front">
+        <div class="fc-source" id="fcSource">–</div>
+        <div class="fc-label">angol szó</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="fc-word" id="fcWord">Betöltés...</div>
+          <button class="tts-btn" style="background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.4);color:white;"
+            onclick="event.stopPropagation();speakCurrent('word')" title="Kiejtés">🔊</button>
+        </div>
+        <div class="fc-hint">👆 Kattints a fordításhoz</div>
+      </div>
+      <div class="flashcard-back">
+        <div class="fc-label">magyar jelentés</div>
+        <div class="fc-meaning" id="fcMeaning">–</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+          <div class="fc-example" id="fcExample"></div>
+          <button class="tts-btn" onclick="event.stopPropagation();speakCurrent('example')" title="Példamondat kiejtése">🔊</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fc-controls">
+    <button class="btn btn-ghost btn-sm" id="btnPrev" onclick="prevCard()" disabled>← Előző</button>
+    <button class="btn btn-primary" id="btnNext" onclick="nextCard()">Következő →</button>
+    <button class="btn btn-ghost btn-sm" onclick="shuffleCards()">🔀 Keverés</button>
+  </div>
+  <div class="card" style="margin-top:18px;">
+    <h3 style="font-size:.87rem;font-weight:700;margin-bottom:9px;">📋 Témák</h3>
+    <div id="vocabTopics" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+  </div>
+</div>
+
+<!-- ══ NYELVTAN ══ -->
+<div id="panel-grammar" class="panel">
+  <div class="section-head">
+    <h2>📖 Nyelvtani leckék</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadGrammar()">🔄 Frissítés</button>
+  </div>
+  <div id="grammarList"><p style="color:var(--text-muted);">Betöltés...</p></div>
+</div>
+
+<!-- ══ KVÍZ ══ -->
+<div id="panel-quiz" class="panel">
+  <div class="section-head">
+    <h2>🎯 Szókincs kvíz</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadQuiz()">🔄 Új kvíz</button>
+  </div>
+  <div id="quizContent">
+    <div class="card"><p style="text-align:center;color:var(--text-muted);padding:18px;">Betöltés...</p></div>
+  </div>
+</div>
+
+<!-- ══ HIBÁK ══ -->
+<div id="panel-mistakes" class="panel">
+  <div class="section-head">
+    <h2>⚠️ Hibás szavak</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadMistakes()">🔄 Frissítés</button>
+  </div>
+  <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px;">A Journal "Hibás szavak" szekciójából összegyűjtve.</p>
+  <div id="mistakesList"></div>
+</div>
+
+<!-- ══ HALADÁS ══ -->
+<div id="panel-progress" class="panel">
+  <div class="section-head">
+    <h2>📊 Haladás</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadProgress()">🔄 Frissítés</button>
+  </div>
+  <div class="progress-stats" id="progressStats">
+    <div class="pstat"><div class="pstat-num" id="ps-days">–</div><div class="pstat-label">📅 Nap összesen</div></div>
+    <div class="pstat"><div class="pstat-num" id="ps-words">–</div><div class="pstat-label">📚 Szó összesen</div></div>
+    <div class="pstat"><div class="pstat-num" id="ps-avg">–</div><div class="pstat-label">🎯 Átlag kvíz %</div></div>
+    <div class="pstat"><div class="pstat-num" id="ps-best">–</div><div class="pstat-label">🏆 Legjobb nap</div></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">🎯 Napi kvíz eredmények (%)</div>
+    <canvas id="chartQuiz" class="chart"></canvas>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">📚 Napi új szavak</div>
+    <canvas id="chartWords" class="chart"></canvas>
+  </div>
+  <div id="progressTable"></div>
+</div>
+
+<!-- ══ AI TUTOR ══ -->
+<div id="panel-tutor" class="panel">
+  <div class="section-head">
+    <h2>🤖 AI Tutor</h2>
+    <span id="tutorStatus" style="font-size:.78rem;color:var(--text-muted);">Ellenőrzés...</span>
+  </div>
+  <div class="quick-btns">
+    <button class="quick-btn" onclick="sendQuick('Explain &quot;have got&quot; simply with 3 examples.')">have got</button>
+    <button class="quick-btn" onclick="sendQuick('Give me 5 sentences with can and can\\'t about daily life.')">can/can't</button>
+    <button class="quick-btn" onclick="sendQuick('Quiz me: ask me 3 questions about emotions vocabulary.')">Érzelmek kvíz</button>
+    <button class="quick-btn" onclick="sendQuick('Teach me 5 body parts in English with example sentences.')">Testrészek</button>
+    <button class="quick-btn" onclick="sendRepetition()">🔁 Ismétlés (hibák alapján)</button>
+  </div>
+  <div class="chat-box" id="chatBox">
+    <div class="msg bot">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble">Szia! Én vagyok az AI tutorod. Kérdezz angolul vagy magyarul – segítek! 😊
+
+Gyors tippek:
+• Írj angolul → javítom a hibákat ✅
+• Kérdezz nyelvtanról → egyszerűen magyarázom
+• "Ismétlés" gomb → hibáidra szabott gyakorlat 🔁</div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Írj angolul vagy magyarul..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+    <button class="btn btn-primary" onclick="sendChat()" id="btnSend">Küldés</button>
+  </div>
+</div>
+
+</main>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>⚙️ Beállítások</h3>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-row">
+      <label>Ollama modell</label>
+      <select id="modelSelect" class="modal-select">
+        <option value="llama3:8b">llama3:8b (alapértelmezett)</option>
+      </select>
+      <div class="model-info" id="modelInfo">Elérhető modellek betöltése...</div>
+    </div>
+    <div class="modal-row">
+      <label>Kiejtés sebessége</label>
+      <select id="ttsRate" class="modal-select">
+        <option value="0.7">🐢 Lassú (tanuláshoz)</option>
+        <option value="0.85" selected>🚶 Normál</option>
+        <option value="1.0">🏃 Gyors</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">Mégse</button>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ISMÉTLÉS FAB ══ -->
+<button class="fab" onclick="switchTab('tutor');setTimeout(sendRepetition,300)" title="Ismétlés">🔁</button>
+<div class="fab-label">Ismétlés (hibák alapján)</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Állapot ────────────────────────────────────────────────────────────────────
+let allCards = [], filteredCards = [], cardIndex = 0, isFlipped = false;
+let quizData = [], quizIndex = 0, quizScore = 0, answered = false;
+let currentCard = null;
+let selectedModel = localStorage.getItem('ollamaModel') || 'llama3:8b';
+let ttsRate = parseFloat(localStorage.getItem('ttsRate') || '0.85');
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  setDate();
+  checkOllama();
+  loadHome();
+  loadVocab();
+  loadGrammar();
+  loadQuiz();
+  loadMistakes();
+  loadProgress();
+  // Auto-resize chat textarea
+  const ta = document.getElementById('chatInput');
+  if (ta) ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 110) + 'px'; });
+});
+
+function setDate() {
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('hu-HU', { year:'numeric', month:'short', day:'numeric', weekday:'short' });
+}
+
+async function checkOllama() {
+  try {
+    const d = await fetch('/api/status').then(r => r.json());
+    const el = document.getElementById('ollamaStatus');
+    if (d.ollama) {
+      el.textContent = '🤖 Ollama ✓'; el.className = 'badge ok';
+      document.getElementById('tutorStatus').textContent = `Fut – ${selectedModel}`;
+    } else {
+      el.textContent = '⚠️ Ollama off'; el.className = 'badge err';
+      document.getElementById('tutorStatus').textContent = '⚠️ Ollama nem fut → ollama serve';
+    }
+  } catch { /**/ }
+}
+
+// ── Tab váltás ─────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const idx = ['home','vocab','grammar','quiz','mistakes','progress','tutor'].indexOf(name);
+  document.querySelectorAll('nav.tabs button')[idx]?.classList.add('active');
+  if (name === 'progress') renderCharts();
+}
+
+// ── FŐOLDAL ────────────────────────────────────────────────────────────────────
+async function loadHome() {
+  try {
+    const d = await fetch('/api/plan').then(r => r.json());
+    document.getElementById('planDate').textContent = 'Napló: ' + (d.date || '–');
+    document.getElementById('planContent').innerHTML = renderPlan(d.plan || '');
+  } catch { /**/ }
+  try {
+    const [dv, dg, dm, dp] = await Promise.all([
+      fetch('/api/vocabulary').then(r=>r.json()),
+      fetch('/api/grammar').then(r=>r.json()),
+      fetch('/api/mistakes').then(r=>r.json()),
+      fetch('/api/progress').then(r=>r.json()),
+    ]);
+    document.getElementById('statCards').textContent   = dv.total || 0;
+    document.getElementById('statLessons').textContent = (dg.lessons||[]).length;
+    document.getElementById('statMistakes').textContent= (dm.mistakes||[]).length;
+    document.getElementById('statDays').textContent    = (dp.data||[]).length;
+  } catch { /**/ }
+}
+
+function renderPlan(md) {
+  if (!md) return '<p style="color:var(--text-muted);font-size:.88rem;">Nincs terv a legutóbbi naplóban.</p>';
+  return md.split('\n').filter(l=>l.trim()).map(line => {
+    if (line.startsWith('- [ ]') || line.startsWith('- [x]')) {
+      const done = line.includes('[x]');
+      const text = line.replace(/^- \[.\] /,'').replace(/`([^`]+)`/g,'<code style="background:var(--gray-light);padding:1px 4px;border-radius:3px;font-size:.83em;">$1</code>');
+      return `<div class="plan-item"><div class="plan-check" style="${done?'background:var(--success);border-color:var(--success);':''}"></div><div class="plan-text">${text}</div></div>`;
+    }
+    return `<p style="font-size:.85rem;color:var(--text-muted);margin:3px 0;">${line}</p>`;
+  }).join('');
+}
+
+// ── TTS (Web Speech API) ───────────────────────────────────────────────────────
+function speak(text, lang = 'en-US') {
+  if (!window.speechSynthesis) { showToast('⚠️ TTS nem elérhető ebben a böngészőben'); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang;
+  utt.rate = ttsRate;
+  utt.pitch = 1;
+  window.speechSynthesis.speak(utt);
+}
+
+function speakCurrent(part) {
+  if (!currentCard) return;
+  if (part === 'word')    speak(currentCard.q);
+  if (part === 'example') speak(currentCard.example || currentCard.meaning);
+}
+
+function ttsHtml(text, lang = 'en-US') {
+  const esc = text.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return `<button class="tts-btn" onclick="event.stopPropagation();speak('${esc}','${lang}')" title="🔊 Kiejtés">🔊</button>`;
+}
+
+// ── SZÓKINCS ───────────────────────────────────────────────────────────────────
+async function loadVocab() {
+  try {
+    const d = await fetch('/api/vocabulary').then(r=>r.json());
+    allCards = d.cards || [];
+    filteredCards = [...allCards];
+    cardIndex = 0;
+    renderTopics();
+    showCard();
+  } catch { showToast('Szókincs betöltési hiba'); }
+}
+
+function renderTopics() {
+  const topics = [...new Set(allCards.map(c=>c.source))];
+  const wrap = document.getElementById('vocabTopics');
+  wrap.innerHTML = `<button class="quick-btn" style="border-color:var(--primary);color:var(--primary);" onclick="filterCards(null)">Mind (${allCards.length})</button>`;
+  topics.forEach(t => {
+    const n = allCards.filter(c=>c.source===t).length;
+    wrap.innerHTML += `<button class="quick-btn" onclick="filterCards('${t.replace(/'/g,"\\'")}')">${t} (${n})</button>`;
+  });
+}
+
+function filterCards(topic) {
+  filteredCards = topic ? allCards.filter(c=>c.source===topic) : [...allCards];
+  cardIndex = 0; isFlipped = false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  showCard();
+  showToast(topic ? `${topic} (${filteredCards.length} szó)` : `Mind: ${filteredCards.length} szó`);
+}
+
+function showCard() {
+  if (!filteredCards.length) {
+    document.getElementById('fcWord').textContent = 'Nincs szókártya!';
+    document.getElementById('fcMeaning').textContent = '–';
+    document.getElementById('fcExample').textContent = '';
+    return;
+  }
+  currentCard = filteredCards[cardIndex];
+  document.getElementById('fcWord').textContent    = currentCard.q;
+  document.getElementById('fcMeaning').textContent = currentCard.meaning;
+  document.getElementById('fcExample').textContent = currentCard.example ? `"${currentCard.example}"` : '';
+  document.getElementById('fcSource').textContent  = currentCard.source;
+  document.getElementById('fcCounter').textContent = `${cardIndex+1}/${filteredCards.length}`;
+  document.getElementById('fcProgress').style.width = ((cardIndex+1)/filteredCards.length*100)+'%';
+  document.getElementById('btnPrev').disabled = cardIndex === 0;
+  document.getElementById('btnNext').textContent = cardIndex===filteredCards.length-1 ? '🔄 Újrakezd' : 'Következő →';
+}
+
+function flipCard() {
+  isFlipped = !isFlipped;
+  document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+  if (isFlipped && currentCard) speak(currentCard.q);
+}
+function nextCard() {
+  if (cardIndex < filteredCards.length-1) cardIndex++;
+  else { cardIndex=0; showToast('🎉 Végigértél! Újrakezded.'); }
+  isFlipped = false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  showCard();
+}
+function prevCard() {
+  if (cardIndex > 0) { cardIndex--; isFlipped=false; document.getElementById('flashcard').classList.remove('flipped'); showCard(); }
+}
+function shuffleCards() {
+  filteredCards = filteredCards.sort(()=>Math.random()-.5);
+  cardIndex=0; isFlipped=false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  showCard(); showToast('🔀 Megkeverve!');
+}
+
+// ── NYELVTAN ───────────────────────────────────────────────────────────────────
+async function loadGrammar() {
+  const el = document.getElementById('grammarList');
+  el.innerHTML = '<p style="color:var(--text-muted);">Betöltés...</p>';
+  try {
+    const d = await fetch('/api/grammar').then(r=>r.json());
+    if (!d.lessons?.length) { el.innerHTML='<div class="empty"><div class="icon">📭</div><p>Nincs Grammar fájl.</p></div>'; return; }
+    el.innerHTML = d.lessons.map((l,i) => `
+      <div class="grammar-card">
+        <div class="grammar-header" onclick="toggleGrammar(${i})">
+          <div>
+            <div class="grammar-title">${escHtml(l.title)}</div>
+            <div class="grammar-meta">${l.date||''} ${l.topic?'· '+l.topic:''}</div>
+          </div>
+          <span id="gc-arrow-${i}">▼</span>
+        </div>
+        <div class="grammar-body" id="gc-body-${i}">
+          ${l.rule     ? `<div class="grammar-section"><h4>Szabály</h4>${renderMd(l.rule)}</div>` : ''}
+          ${l.when     ? `<div class="grammar-section"><h4>Mikor használjuk?</h4>${renderMd(l.when)}</div>` : ''}
+          ${l.forms    ? `<div class="grammar-section"><h4>Alakok / Szerkezet</h4>${renderMd(l.forms)}</div>` : ''}
+          ${l.examples ? `<div class="grammar-section"><h4>Példák</h4>${renderMdTable(l.examples)}</div>` : ''}
+          ${l.mistakes ? `<div class="grammar-section"><h4>Gyakori hibák</h4>${renderMd(l.mistakes)}</div>` : ''}
+          ${l.practice ? `<div class="grammar-section"><h4>Gyakorlat</h4>${renderMd(l.practice)}</div>` : ''}
+        </div>
+      </div>`).join('');
+    toggleGrammar(0);
+  } catch { el.innerHTML='<p style="color:var(--danger);">Betöltési hiba.</p>'; }
+}
+
+function toggleGrammar(i) {
+  const body=document.getElementById(`gc-body-${i}`), arrow=document.getElementById(`gc-arrow-${i}`);
+  arrow.textContent = body.classList.toggle('open') ? '▲' : '▼';
+}
+
+// Markdown táblázat → HTML (TTS gombokkal az angol oszlopban)
+function renderMdTable(text) {
+  if (!text?.includes('|')) return renderMd(text);
+  const lines = text.split('\n');
+  const tableLines = lines.filter(l=>l.trim().startsWith('|'));
+  if (tableLines.length < 2) return renderMd(text);
+  const rows = tableLines.filter(r=>!r.includes('---'));
+  if (rows.length < 2) return renderMd(text);
+  const header = rows[0].split('|').filter(c=>c.trim()).map(c=>`<th>${escHtml(c.trim())}</th>`).join('');
+  // Detect which column is English (Angol)
+  const headers = rows[0].split('|').filter(c=>c.trim()).map(c=>c.trim().toLowerCase());
+  const engCol = headers.indexOf('angol');
+  const body = rows.slice(1).map(r => {
+    const cols = r.split('|').filter(c=>c.trim());
+    const tds = cols.map((c,ci) => {
+      const val = c.trim().replace(/\*\*/g,'');
+      const tts = (ci === engCol && val && val !== '–') ? ttsHtml(val) : '';
+      return `<td>${escHtml(val)}${tts}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('');
+  return `<table class="md-table"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderMd(text) {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code style="background:var(--gray-light);padding:1px 4px;border-radius:3px;font-size:.88em;">$1</code>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul style="padding-left:16px;margin:4px 0;">$1</ul>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(?!<)(.+)$/gm,'<p>$1</p>');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── KVÍZ ───────────────────────────────────────────────────────────────────────
+async function loadQuiz() {
+  const el = document.getElementById('quizContent');
+  el.innerHTML='<div class="card"><p style="text-align:center;color:var(--text-muted);padding:18px;">Generálás...</p></div>';
+  try {
+    const d = await fetch('/api/quiz').then(r=>r.json());
+    quizData=d.questions||[]; quizIndex=0; quizScore=0;
+    if (!quizData.length) { el.innerHTML='<div class="empty"><div class="icon">📭</div><p>Nincs elég szókártya a kvízhez.</p></div>'; return; }
+    showQuizQuestion();
+  } catch { el.innerHTML='<div class="card"><p style="color:var(--danger);">Betöltési hiba.</p></div>'; }
+}
+
+function showQuizQuestion() {
+  answered=false;
+  if (quizIndex>=quizData.length) { showQuizResult(); return; }
+  const q=quizData[quizIndex];
+  const pct=Math.round(quizIndex/quizData.length*100);
+  document.getElementById('quizContent').innerHTML=`
+    <div class="card">
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:6px;">Kérdés ${quizIndex+1} / ${quizData.length}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div style="height:10px;"></div>
+      <div class="quiz-question">
+        Mit jelent: <em>"${escHtml(q.question)}"</em>
+        ${ttsHtml(q.question)}
+      </div>
+      ${q.example?`<div class="quiz-example">"${escHtml(q.example)}" ${ttsHtml(q.example)}</div>`:'<div style="height:14px;"></div>'}
+      <div class="quiz-source">Téma: ${escHtml(q.source||'–')}</div>
+      <div class="quiz-options" id="quizOptions">
+        ${q.options.map(opt=>`<button class="quiz-opt" onclick="checkAnswer(${JSON.stringify(opt)},${JSON.stringify(q.correct)},this)">${escHtml(opt)}</button>`).join('')}
+      </div>
+      <div id="quizFeedback" style="font-size:.88rem;min-height:22px;"></div>
+    </div>`;
+}
+
+function checkAnswer(selected, correct, btn) {
+  if (answered) return;
+  answered=true;
+  document.querySelectorAll('.quiz-opt').forEach(o=>{ o.disabled=true; if(o.textContent===correct) o.classList.add('correct'); });
+  const ok = selected===correct;
+  if (ok) { quizScore++; btn.classList.add('correct'); speak(correct.split(',')[0]); }
+  else    { btn.classList.add('wrong'); }
+  document.getElementById('quizFeedback').innerHTML = ok
+    ? `<span style="color:var(--success);font-weight:700;">✅ Helyes! (${quizScore}/${quizData.length})</span>`
+    : `<span style="color:var(--danger);font-weight:700;">❌ Helyes: <em>${escHtml(correct)}</em></span>`;
+  setTimeout(()=>{ quizIndex++; showQuizQuestion(); }, 1500);
+}
+
+function showQuizResult() {
+  const pct=Math.round(quizScore/quizData.length*100);
+  const emoji=pct>=90?'🏆':pct>=70?'😊':pct>=50?'💪':'📚';
+  const msg=pct>=90?'Kiváló! Tökéletes!':pct>=70?'Nagyon jó!':pct>=50?'Jó munka! Ismételd!':'Gyakorolj még!';
+  document.getElementById('quizContent').innerHTML=`
+    <div class="card quiz-score">
+      <span class="big">${emoji}</span>
+      <div style="font-size:2rem;font-weight:900;color:var(--primary);">${quizScore} / ${quizData.length}</div>
+      <div style="font-size:1rem;color:var(--text-muted);margin:6px 0;">${pct}% – ${msg}</div>
+      <div style="margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="loadQuiz()">🔄 Új kvíz</button>
+        ${pct<80?'<button class="btn btn-warning btn-sm" onclick="switchTab(\'tutor\');setTimeout(sendRepetition,300)">🔁 Ismétlés</button>':''}
+        <button class="btn btn-ghost btn-sm" onclick="switchTab(\'progress\')">📊 Haladás</button>
+      </div>
+    </div>`;
+}
+
+// ── HIBÁK ──────────────────────────────────────────────────────────────────────
+async function loadMistakes() {
+  const el=document.getElementById('mistakesList');
+  el.innerHTML='<p style="color:var(--text-muted);">Betöltés...</p>';
+  try {
+    const d=await fetch('/api/mistakes').then(r=>r.json());
+    if (!d.mistakes?.length) { el.innerHTML='<div class="empty"><div class="icon">🎉</div><p>Nincs rögzített hiba!</p></div>'; return; }
+    el.innerHTML=d.mistakes.map(m=>`
+      <div class="mistake-card">
+        <div style="font-size:1.2rem;">❌→✅</div>
+        <div style="flex:1;">
+          <div class="mistake-wrong">${escHtml(m.wrong)} ${m.wrong?ttsHtml(m.wrong):''}</div>
+          <div class="mistake-correct">${escHtml(m.correct)} ${m.correct?ttsHtml(m.correct):''}</div>
+          <div class="mistake-reason">${escHtml(m.reason)}</div>
+          <div class="mistake-date">${m.date}</div>
+        </div>
+      </div>`).join('');
+  } catch { el.innerHTML='<p style="color:var(--danger);">Betöltési hiba.</p>'; }
+}
+
+// ── HALADÁS ────────────────────────────────────────────────────────────────────
+let progressData = [];
+
+async function loadProgress() {
+  try {
+    const d = await fetch('/api/progress').then(r=>r.json());
+    progressData = d.data || [];
+    updateProgressStats();
+    if (document.getElementById('panel-progress').classList.contains('active')) renderCharts();
+  } catch { /**/ }
+}
+
+function updateProgressStats() {
+  const days  = progressData.length;
+  const words  = progressData.reduce((s,d)=>s+d.newWords,0);
+  const scores = progressData.filter(d=>d.avgQuiz!==null).map(d=>d.avgQuiz);
+  const avg   = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+  const best  = scores.length ? Math.max(...scores) : 0;
+  document.getElementById('ps-days').textContent  = days;
+  document.getElementById('ps-words').textContent = words;
+  document.getElementById('ps-avg').textContent   = avg ? avg+'%' : '–';
+  document.getElementById('ps-best').textContent  = best ? best+'%' : '–';
+}
+
+function renderCharts() {
+  const last14 = progressData.slice(-14);
+  drawBarChart('chartQuiz',  last14.map(d=>({ date:d.date.slice(5), value:d.avgQuiz,  color:'#4F46E5' })), 100,  '%');
+  drawBarChart('chartWords', last14.map(d=>({ date:d.date.slice(5), value:d.newWords, color:'#10B981' })), null, '');
+}
+
+function drawBarChart(canvasId, data, maxVal, suffix) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  // Set actual pixel size
+  canvas.width  = canvas.offsetWidth  || 600;
+  canvas.height = canvas.offsetHeight || 160;
+  const W = canvas.width, H = canvas.height;
+  const pad = { top:24, right:16, bottom:36, left:44 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top  - pad.bottom;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillRect(0,0,W,H);
+
+  const vals = data.map(d=>d.value||0);
+  const max  = maxVal || (Math.max(...vals,1) * 1.2);
+
+  if (!data.length || vals.every(v=>v===0)) {
+    ctx.fillStyle='#94A3B8'; ctx.font='13px system-ui'; ctx.textAlign='center';
+    ctx.fillText('Még nincs elég adat – tanulj tovább! 💪', W/2, H/2);
+    return;
+  }
+
+  // Grid lines (4 lines)
+  for (let i=0; i<=4; i++) {
+    const y = pad.top + cH - (i/4)*cH;
+    ctx.strokeStyle='#E2E8F0'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
+    ctx.fillStyle='#94A3B8'; ctx.font='10px system-ui'; ctx.textAlign='right';
+    ctx.fillText(Math.round((i/4)*max)+suffix, pad.left-4, y+4);
+  }
+
+  const barW = Math.max(8, Math.min(36, cW/data.length*0.65));
+  const step = cW / data.length;
+
+  data.forEach((d,i) => {
+    const x  = pad.left + i*step + step/2;
+    const v  = d.value || 0;
+    const bH = (v/max)*cH;
+    const y  = pad.top + cH - bH;
+
+    if (v > 0) {
+      // Gradient bar
+      const grad = ctx.createLinearGradient(0, y, 0, pad.top+cH);
+      grad.addColorStop(0, d.color);
+      grad.addColorStop(1, d.color+'55');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x-barW/2, y, barW, bH, [4,4,0,0]);
+      ctx.fill();
+
+      // Value label
+      ctx.fillStyle='#1E293B'; ctx.font='bold 10px system-ui'; ctx.textAlign='center';
+      ctx.fillText(v+suffix, x, y-4);
+    }
+
+    // Date label
+    ctx.fillStyle='#64748B'; ctx.font='10px system-ui'; ctx.textAlign='center';
+    ctx.fillText(d.date, x, pad.top+cH+16);
+  });
+
+  // X axis line
+  ctx.strokeStyle='#CBD5E1'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.left,pad.top+cH); ctx.lineTo(pad.left+cW,pad.top+cH); ctx.stroke();
+}
+
+// ── AI TUTOR ───────────────────────────────────────────────────────────────────
+async function sendChat() {
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();
+  if (!msg) return;
+  input.value=''; input.style.height='auto';
+  appendMsg('user', msg);
+  const tid=appendTyping();
+  document.getElementById('btnSend').disabled=true;
+  try {
+    const d=await fetch('/api/chat',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg, model: selectedModel })
+    }).then(r=>r.json());
+    removeTyping(tid);
+    appendMsg('bot', d.response||'Sajnálom, próbáld újra!');
+  } catch {
+    removeTyping(tid);
+    appendMsg('bot','⚠️ Hálózati hiba. Fut az Ollama? → ollama serve');
+  }
+  document.getElementById('btnSend').disabled=false;
+}
+
+async function sendQuick(text) { document.getElementById('chatInput').value=text; await sendChat(); }
+
+async function sendRepetition() {
+  try {
+    const d=await fetch('/api/mistakes').then(r=>r.json());
+    const m=d.mistakes||[];
+    let prompt;
+    if (m.length) {
+      const list=m.map(x=>`"${x.wrong}" → "${x.correct}" (${x.reason})`).join('; ');
+      prompt=`My common mistakes are: ${list}. Give me 4 short practice exercises to fix these. A2 level, keep it simple!`;
+    } else {
+      prompt='Give me 5 practice sentences using "have got" and "can/can\'t". Include emotions: excited, nervous, confident. A2 level.';
+    }
+    document.getElementById('chatInput').value=prompt;
+    await sendChat();
+    showToast('🔁 Ismétlés elküldve!');
+  } catch { showToast('Hiba az ismétlés küldésekor'); }
+}
+
+function appendMsg(role, text) {
+  const box=document.getElementById('chatBox');
+  const div=document.createElement('div');
+  div.className=`msg ${role}`;
+  const ttsButton = role==='bot' ? `<button class="tts-btn" style="margin-top:4px;font-size:.8rem;" onclick="speak(this.dataset.t,'en-US')" data-t="${escHtml(text.substring(0,300))}">🔊 Felolvas</button>` : '';
+  div.innerHTML=`<div class="msg-avatar">${role==='bot'?'🤖':'👤'}</div>
+    <div><div class="msg-bubble">${escHtml(text)}</div>${ttsButton}</div>`;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+function appendTyping() {
+  const box=document.getElementById('chatBox');
+  const id='typing-'+Date.now();
+  const div=document.createElement('div');
+  div.className='msg bot'; div.id=id;
+  div.innerHTML=`<div class="msg-avatar">🤖</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  box.appendChild(div); box.scrollTop=box.scrollHeight;
+  return id;
+}
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+
+// ── BEÁLLÍTÁSOK ────────────────────────────────────────────────────────────────
+async function openSettings() {
+  document.getElementById('settingsModal').classList.remove('hidden');
+  document.getElementById('modelSelect').value = selectedModel;
+  document.getElementById('ttsRate').value = ttsRate;
+  // Modellek betöltése Ollama API-ból
+  document.getElementById('modelInfo').textContent = 'Elérhető modellek betöltése...';
+  try {
+    const d=await fetch('/api/models').then(r=>r.json());
+    const models=d.models||['llama3:8b'];
+    const sel=document.getElementById('modelSelect');
+    sel.innerHTML=models.map(m=>`<option value="${m}"${m===selectedModel?' selected':''}>${m}</option>`).join('');
+    document.getElementById('modelInfo').textContent = `${models.length} elérhető modell az Ollama-ban.`;
+  } catch {
+    document.getElementById('modelInfo').textContent = 'Ollama nem elérhető – alapértelmezett: llama3:8b';
+  }
+}
+
+function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+function saveSettings() {
+  selectedModel = document.getElementById('modelSelect').value;
+  ttsRate       = parseFloat(document.getElementById('ttsRate').value);
+  localStorage.setItem('ollamaModel', selectedModel);
+  localStorage.setItem('ttsRate',     ttsRate);
+  document.getElementById('tutorStatus').textContent = `Fut – ${selectedModel}`;
+  closeSettings();
+  showToast(`✅ Mentve! Modell: ${selectedModel}`);
+}
+
+// Click outside to close settings
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target===this) closeSettings();
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function showToast(msg, ms=2500) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),ms);
+}
+</script>
+</body>
+</html>
